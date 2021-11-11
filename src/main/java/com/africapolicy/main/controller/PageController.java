@@ -118,6 +118,12 @@ public class PageController {
 
 
 
+    @RequestMapping(value = "/verification-guide", method = RequestMethod.GET)
+    public String gotoguide(Model model) {
+        System.out.println("show guide");
+        return "guide";
+    }
+
     @RequestMapping(value = "/", method = RequestMethod.GET)
     public String homePage(Model model) {
 
@@ -141,7 +147,7 @@ public class PageController {
 //        newUser.setActive(1);
 //        userRepo.save(newUser);
 
-        List<String> stateList= healthCenterRepo.findDistinctAll();
+        List<String> stateList= healthCenterRepo.findDistinctAll("public");
 
 
         System.out.println(stateList.toString());
@@ -217,6 +223,7 @@ public class PageController {
     public String confirmationPage(Model model, HttpSession session, @RequestParam(name = "vackey", required = true) String vackey){
 
        UserProfile userp= userProfileRepo.findByVac(vackey);
+
        model.addAttribute("userProfile", userp);
         return "result";
     }
@@ -226,6 +233,12 @@ public class PageController {
     @RequestMapping(value = "/registration", method = RequestMethod.POST)
     public ResponseEntity<StatusMessage> createNewUser(@Valid UserProfile user, BindingResult bindingResult, Model model, HttpServletRequest request, HttpSession session) throws ParseException, URISyntaxException {
 
+         if(user.getGender().equalsIgnoreCase("female") && user.getPregnant().equalsIgnoreCase("true")){
+
+            System.out.println("error");
+            errorMessage="Pregnant women are not eligible for vaccination at this time. ";
+            return  ResponseEntity.status(500).body(new StatusMessage("error",errorMessage ));
+          }
 
 
 
@@ -253,16 +266,37 @@ public class PageController {
 
             userProfile.setDate(user.getDate());
             userProfile.setSession(user.getSession());
+            userProfile.setFacilitytype(user.getFacilitytype());
 
             String vackey= generator();
 
             userProfile.setVac(vackey);
+            if(user.getDosetype()=="first"){
+                userProfile.setCost(hc.getFulldose());
+            }else{
+                userProfile.setCost(hc.getOnedose());
+            }
 
+
+            if(user.getFacilitytype()=="public"){
+                userProfile.setPaid("paid");
+            }else{
+                userProfile.setPaid("unpaid");
+            }
 
 
 
 
             userProfileRepo.save(userProfile);
+
+
+            if(user.getDosetype()=="first"){
+                System.out.println("first dose");
+                System.out.println(user.getFacilitytype());
+            }else{
+                System.out.println(user.getFacilitytype());
+                System.out.println("second dose");
+            }
 
 
 
@@ -296,7 +330,7 @@ public class PageController {
             Email to = new Email(userProfile.getEmail());
             String timeing;
 
-            if(myRoom.getTimeslot()=="Morning"){
+            if(myRoom.getTimeslot().equalsIgnoreCase("Morning")){
 
                 timeing="(8:00am -12:00pm)";
             }else{
@@ -452,9 +486,9 @@ public class PageController {
         }
 
         if(user.getGender().equalsIgnoreCase("female") && user.getPregnant().equalsIgnoreCase("false") ){
-            preg.setValue("preg");
-        }else{
             preg.setValue("notpreg");
+        }else{
+            preg.setValue("preg");
         }
 
 
